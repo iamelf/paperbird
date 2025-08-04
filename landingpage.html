@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Paperbird - Interactive PRD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Slate & Amber -->
+    <!-- Application Structure Plan: A two-column dashboard layout was chosen to mirror the core user workflow. The left column contains the primary user input (the 'Relevance Prompt'), acting as a control panel. The right, main column displays the output (the 'Paper Feed'). This separation provides a clear, task-oriented interface. Below the main content, a dedicated 'Success Metrics' section uses charts to visualize the project goals from the PRD, making abstract metrics tangible. This structure is intuitive for the target audience (PMs) who are familiar with analytics dashboards and allows for easy synthesis of requirements and outcomes. -->
+    <!-- Visualization & Content Choices:
+        - Report Info: Core Features & User Stories -> Goal: Organize & Inform -> Viz/Presentation Method: Interactive two-column layout. Left side for prompt editing (HTML textarea), right side for a scrollable paper feed (HTML cards). -> Interaction: Users can edit the prompt and click buttons on each paper card ('Read', 'Not Interested') to see a visual state change. -> Justification: This directly simulates the app's primary functionality as described in the PRD, making the user stories tangible. -> Library/Method: Vanilla JS & Tailwind CSS.
+        - Report Info: Success Metrics (User Engagement, Task Success, Feedback Rate) -> Goal: Inform & Compare -> Viz/Presentation Method: A line chart for engagement over time, a doughnut chart for task completion proportion, and a bar chart for feedback comparison. -> Interaction: Hovering over charts reveals tooltips with specific data points. -> Justification: Charts provide a much quicker and more engaging way to understand quantitative metrics than a static list, turning the 'Success Metrics' section of the PRD into an interactive dashboard. -> Library/Method: Chart.js.
+        - CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 350px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 320px;
+            }
+        }
+        .card-read {
+            opacity: 0.6;
+            border-left-color: #22c55e; /* green-500 */
+        }
+        .card-not-interested {
+            opacity: 0.4;
+            border-left-color: #ef4444; /* red-500 */
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="container mx-auto p-4 md:p-8">
+
+        <header class="text-center mb-10">
+            <h1 class="text-4xl md:text-5xl font-bold text-slate-900">Paperbird</h1>
+            <p class="mt-2 text-lg text-slate-600">An interactive view of the MVP Product Requirements Document.</p>
+        </header>
+
+        <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <aside class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 sticky top-8">
+                    <h2 class="text-2xl font-bold mb-1 text-slate-900">Relevance Prompt</h2>
+                    <p class="text-slate-600 mb-4 text-sm">Define your interests to filter the paper feed. This is the core of the Paperbird engine, turning your context into a powerful discovery lens.</p>
+                    <textarea id="relevance-prompt" class="w-full h-64 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition" placeholder="e.g., I'm a Product Manager for a team building AI-powered code generation tools. I'm interested in new transformer architectures, techniques for improving code synthesis, and papers on developer productivity from competitors like Google Brain or Microsoft Research."></textarea>
+                    <button id="save-prompt-btn" class="mt-4 w-full bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors shadow-sm">Save Prompt</button>
+                    <p id="save-confirm" class="text-center text-green-600 text-sm mt-2 opacity-0 transition-opacity">Prompt saved!</p>
+                </div>
+            </aside>
+
+            <section class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h2 class="text-2xl font-bold mb-1 text-slate-900">Relevant Paper Feed</h2>
+                    <p class="text-slate-600 mb-6 text-sm">This feed shows the latest papers from arXiv, filtered and summarized based on your prompt. Interact with each card to teach Paperbird what you find most valuable.</p>
+                    <div id="paper-feed" class="space-y-4">
+                    </div>
+                </div>
+            </section>
+
+        </main>
+
+        <section class="mt-12 pt-8 border-t border-slate-200">
+            <header class="text-center mb-10">
+                <h2 class="text-3xl font-bold text-slate-900">MVP Success Metrics</h2>
+                <p class="mt-2 text-md text-slate-600">This section visualizes the key metrics defined in the PRD for tracking the MVP's performance and user adoption.</p>
+            </header>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-xl font-bold text-center mb-4 text-slate-900">User Engagement (DAU)</h3>
+                    <div class="chart-container">
+                        <canvas id="engagementChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-xl font-bold text-center mb-4 text-slate-900">Task Success Rate</h3>
+                    <div class="chart-container">
+                        <canvas id="taskSuccessChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                    <h3 class="text-xl font-bold text-center mb-4 text-slate-900">Feedback Rate</h3>
+                    <div class="chart-container">
+                        <canvas id="feedbackChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const mockPapers = [
+                {
+                    id: 1,
+                    title: "A Path Towards Autonomous Machine Intelligence",
+                    authors: "Yann LeCun",
+                    summary: "This paper presents a perspective on the future of AI, arguing that the next revolution will not come from purely supervised or reinforcement learning models. It proposes a modular architecture that includes a configurable predictive world model, a cost function, and a short-term memory module. The summary highlights the relevance to product strategy by suggesting a move towards more causal and predictive models for user behavior.",
+                    link: "https://arxiv.org/abs/2208.07624",
+                    status: "relevant"
+                },
+                {
+                    id: 2,
+                    title: "Training Language Models to Follow Instructions with Human Feedback",
+                    authors: "Long Ouyang, Jeff Wu, et al. (OpenAI)",
+                    summary: "Detailing the methodology behind InstructGPT, this paper is crucial for any PM working on conversational AI. It shows how reinforcement learning from human feedback (RLHF) can significantly improve a model's ability to follow complex instructions, making it more helpful and safer. The key takeaway is the power of human-in-the-loop training for fine-tuning user-facing AI products.",
+                    link: "https://arxiv.org/abs/2203.02155",
+                    status: "relevant"
+                },
+                {
+                    id: 3,
+                    title: "On the Dangers of Stochastic Parrots: Can Language Models Be Too Big?",
+                    authors: "Emily M. Bender, Timnit Gebru, et al.",
+                    summary: "This paper provides a critical perspective on the risks associated with large language models, including environmental costs, perpetuation of biases, and potential for misuse. For a PM, this is essential reading for understanding the ethical landscape and potential pitfalls of deploying LLM-based features, emphasizing the need for robust risk assessment and mitigation strategies.",
+                    link: "https://dl.acm.org/doi/10.1145/3442188.3445922",
+                    status: "relevant"
+                },
+                {
+                    id: 4,
+                    title: "A Generalist Agent",
+                    authors: "Scott Reed, Konrad Zolna, et al. (DeepMind)",
+                    summary: "Introducing 'Gato', this paper explores a single generalist agent capable of performing a wide variety of tasks, from playing games to controlling a robot arm. It's relevant for PMs thinking about platform-level AI capabilities, demonstrating the potential for a single, versatile model to power multiple, seemingly disparate product features, which could have significant architectural and strategic implications.",
+                    link: "https://arxiv.org/abs/2205.06175",
+                    status: "relevant"
+                }
+            ];
+
+            const feed = document.getElementById('paper-feed');
+
+            const renderFeed = () => {
+                feed.innerHTML = '';
+                mockPapers.forEach(paper => {
+                    const card = document.createElement('div');
+                    card.className = `p-4 border-l-4 rounded-r-lg bg-slate-100 transition-all duration-300`;
+                    card.dataset.id = paper.id;
+
+                    let statusClass = 'border-amber-400';
+                    if (paper.status === 'read') statusClass = 'card-read border-green-500';
+                    if (paper.status === 'not_interested') statusClass = 'card-not-interested border-red-500';
+                    card.classList.add(statusClass);
+
+                    card.innerHTML = `
+                        <h4 class="font-bold text-lg text-slate-800">${paper.title}</h4>
+                        <p class="text-sm text-slate-500 mb-2">by ${paper.authors}</p>
+                        <p class="text-slate-700 mb-4">${paper.summary}</p>
+                        <div class="flex items-center justify-between">
+                            <a href="${paper.link}" target="_blank" class="text-amber-600 hover:text-amber-700 font-semibold text-sm">Read on arXiv &rarr;</a>
+                            <div class="space-x-2">
+                                <button data-action="read" class="px-3 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors">Mark as Read</button>
+                                <button data-action="not_interested" class="px-3 py-1 text-xs font-semibold text-red-700 bg-red-100 rounded-full hover:bg-red-200 transition-colors">Not Interested</button>
+                            </div>
+                        </div>
+                    `;
+                    feed.appendChild(card);
+                });
+            };
+
+            feed.addEventListener('click', (e) => {
+                if (e.target.tagName === 'BUTTON') {
+                    const action = e.target.dataset.action;
+                    const card = e.target.closest('div[data-id]');
+                    const paperId = parseInt(card.dataset.id);
+
+                    const paper = mockPapers.find(p => p.id === paperId);
+                    if (paper) {
+                        paper.status = action;
+                        renderFeed();
+                    }
+                }
+            });
+
+            const saveBtn = document.getElementById('save-prompt-btn');
+            const saveConfirm = document.getElementById('save-confirm');
+            saveBtn.addEventListener('click', () => {
+                saveConfirm.style.opacity = '1';
+                setTimeout(() => {
+                    saveConfirm.style.opacity = '0';
+                }, 2000);
+            });
+
+            renderFeed();
+
+            const chartTooltip = {
+                bodyFont: {
+                    family: 'Inter',
+                },
+                titleFont: {
+                    family: 'Inter',
+                },
+                boxPadding: 4,
+                callbacks: {
+                    label: function(context) {
+                        let label = context.dataset.label || '';
+                        if (label) {
+                            label += ': ';
+                        }
+                        if (context.parsed.y !== null) {
+                            label += context.parsed.y;
+                        }
+                        return label;
+                    }
+                }
+            };
+
+            const chartLegends = {
+                labels: {
+                    font: {
+                        family: 'Inter'
+                    }
+                }
+            };
+
+            new Chart(document.getElementById('engagementChart'), {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                    datasets: [{
+                        label: 'Daily Active Users',
+                        data: [12, 19, 25, 35, 48, 62],
+                        fill: true,
+                        borderColor: 'rgb(245, 158, 11)',
+                        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: chartTooltip, legend: chartLegends },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            new Chart(document.getElementById('taskSuccessChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Prompt Saved', 'Session Dropped'],
+                    datasets: [{
+                        label: 'Task Success',
+                        data: [85, 15],
+                        backgroundColor: ['rgb(5, 150, 105)', 'rgb(239, 68, 68)'],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: chartTooltip, legend: chartLegends }
+                }
+            });
+
+            new Chart(document.getElementById('feedbackChart'), {
+                type: 'bar',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                    datasets: [
+                        {
+                            label: 'Marked as Read',
+                            data: [65, 80, 110, 150],
+                            backgroundColor: 'rgba(34, 197, 94, 0.7)',
+                        },
+                        {
+                            label: 'Not Interested',
+                            data: [20, 25, 30, 28],
+                            backgroundColor: 'rgba(239, 68, 68, 0.7)',
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { tooltip: chartTooltip, legend: chartLegends },
+                    scales: {
+                        x: { stacked: true },
+                        y: { stacked: true, beginAtZero: true }
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

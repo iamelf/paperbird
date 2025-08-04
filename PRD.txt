@@ -1,0 +1,88 @@
+Paperbird: MVP Product Requirements Document
+1. Introduction & Problem Statement
+Product Managers in technology-driven fields need to stay informed about the latest academic research to identify emerging trends, understand competitor innovations, and discover new product opportunities. Sifting through daily publications on platforms like arXiv is time-consuming and inefficient. Paperbird is a tool that automates the discovery of highly relevant academic papers for Product Managers, saving them time and surfacing critical insights.
+
+2. Target Audience
+Product Managers
+
+Product Leaders
+
+Applied Researchers in corporate settings
+
+3. MVP Goal
+To build a functional web application that ingests papers from arXiv, filters them based on a user-defined prompt, and presents a summarized feed of relevant papers for the user to review.
+
+4. Core Features & User Stories
+4.1. User Profile & Relevance Prompt
+
+Description: The core of the filtering logic is a user-defined prompt. This prompt acts as a persistent set of instructions for Paperbird.
+
+User Story: "As a PM, I want to create and save a detailed natural language prompt that defines my areas of interest, key competitors, and specific work context, so that the system can use it as a lens to filter for relevant papers."
+
+4.2. Relevant Paper Feed
+
+Description: The main user interface will be a feed displaying papers that Paperbird has identified as relevant based on the user's prompt.
+
+User Story: "As a PM, I want to see a feed of the latest papers that match my prompt, with each entry showing the paper's title, authors, and a concise, AI-generated summary, so I can quickly assess its importance to my work."
+
+4.3. User Feedback Loop
+
+Description: To improve the filtering model over time, users can provide simple feedback on the results.
+
+User Story: "As a PM, I want to mark papers in my feed as 'Read' or 'Not Interested', so the system can learn from my feedback and refine its future recommendations."
+
+5. Functional Requirements
+5.1. Frontend
+
+A clean, single-page web interface.
+
+Prompt Editor: A text area where a user can create, edit, and save their relevance prompt.
+
+Paper Feed View:
+
+A list of cards, where each card represents a relevant paper.
+
+Each card must display:
+
+Paper Title & Authors
+
+Generated Summary (approx. 100-150 words)
+
+Link to the original paper on arXiv.
+
+Buttons for "Mark as Read" and "Not Interested".
+
+5.2. Backend
+
+Data Ingestion:
+
+A scheduled service (e.g., daily cron job) that fetches the latest computer science (CS) paper listings from the arXiv API (XML feed).
+
+The service will parse the XML to extract the title, authors, abstract, and link for each new paper.
+
+Filtering & Summarization Service (The Core Logic):
+
+For each new paper, the service will iterate through all stored user prompts.
+
+For each user, it will execute a two-step AI process:
+
+Relevance Check: An LLM call that takes the user's prompt and the paper's abstract as input. The LLM's task is to return a simple boolean (or structured JSON like {"is_relevant": true/false, "reason": "..."}) to determine if the paper is relevant to that specific user.
+
+Summarization: If the paper is deemed relevant, a second LLM call is made. This call takes the user's prompt and the paper's abstract as input and generates a concise summary tailored to the user's context.
+
+Database:
+
+Users table: To store user information and their relevance prompt.
+
+Papers table: To store details of all ingested papers.
+
+UserPaperStatus table: A join table to link users to papers, storing the status (relevant, read, not_interested) and the generated summary.
+
+6. Success Metrics for MVP
+User Engagement: Daily/Weekly Active Users.
+
+Task Success Rate: Percentage of users who create and save a prompt.
+
+Feedback Rate: Percentage of papers in a user's feed that are marked with a status ("Read" or "Not Interested").
+
+Qualitative Feedback: Direct user interviews to assess the quality and relevance of the summaries.

@@ -1,0 +1,26 @@
+# Python dependencies for Paperbird
+
+# Web framework
+flask==2.3.3
+
+# API requests
+requests==2.31.0
+
+# Database
+sqlalchemy==2.0.23
+
+# LLM integration
+openai==1.3.0
+
+# XML parsing (for arXiv API)
+beautifulsoup4==4.12.2
+feedparser==6.0.10
+
+# Environment variables
+python-dotenv==1.0.0
+
+# WSGI server
+gunicorn==21.2.0
+
+# Frontend (if using Flask templates)
+flask-wtf==1.2.1

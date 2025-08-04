@@ -22,9 +22,8 @@ def main():
 
     # Create an instance of ArxivFetcher with custom default values
     fetcher = ArxivFetcher(
-        default_search_term="all:recommendation",
-        default_category=None,  # No category restriction to get more results
-        default_subcategory="cs.AI",  # Artificial Intelligence subcategory
+        default_search_term="all:recommendation system",
+        default_categories=["cs.AI", "cs.LG"],  # AI and Machine Learning categories
         default_max_results=10,
         default_sort_by="submittedDate",
         default_sort_order="descending",
@@ -32,36 +31,25 @@ def main():
 
     print("ArxivFetcher initialized with the following default values:")
     print(f"- Default search term: {fetcher.default_search_term}")
-    print(f"- Default category: {fetcher.default_category}")
-    print(f"- Default subcategory: {fetcher.default_subcategory}")
+    print(f"- Default categories: {fetcher.default_categories}")
     print(f"- Default max results: {fetcher.default_max_results}")
     print(f"- Default sort by: {fetcher.default_sort_by}")
     print(f"- Default sort order: {fetcher.default_sort_order}")
     print()
 
-    # Fetch the latest papers in Computer Science (default category)
-    # Limiting to 5 papers for demonstration purposes
-    papers = fetcher.fetch_latest_papers(max_results=5)
-
-    print(f"Found {len(papers)} papers.\n")
-
-    # Display information for each paper
-    for i, paper in enumerate(papers, 1):
-        print(f"Paper {i}:")
-        print(format_paper_info(paper))
-        print("-" * 80)  # Separator
-
-    # Example of searching for papers with a specific query
-    print("\nSearching for papers related to 'large language models'...")
-    search_papers = fetcher.search_papers(
-        query="all:large language models", max_results=3
+    # Fetch papers by category
+    print("\nFetching papers from the AI and ML category...")
+    category_papers = fetcher.search_papers(
+        query="all:recommender system",
+        categories=["cs.AI", "cs.LG"],  # Computation and Language category
+        max_results=10,
     )
 
-    print(f"Found {len(search_papers)} papers.\n")
+    print(f"Found {len(category_papers)} papers in AI and ML category.\n")
 
-    # Display information for each search result
-    for i, paper in enumerate(search_papers, 1):
-        print(f"Search Result {i}:")
+    # Display information for each paper in the category
+    for i, paper in enumerate(category_papers, 1):
+        print(f"Category Paper {i}:")
         print(format_paper_info(paper))
         print("-" * 80)  # Separator
 

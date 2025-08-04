@@ -22,9 +22,8 @@ class ArxivFetcher:
 
     def __init__(
         self,
-        default_search_term: str = "all:quantum",
-        default_category: str = "cs",
-        default_subcategory: str = "cs.AI",
+        default_search_term: str = "all:recommendation system",
+        default_categories: List[str] = None,
         default_max_results: int = 50,
         default_sort_by: str = "submittedDate",
         default_sort_order: str = "descending",
@@ -34,15 +33,13 @@ class ArxivFetcher:
 
         Args:
             default_search_term: Default search term to use when none is provided
-            default_category: Default arXiv category (e.g., 'cs' for Computer Science)
-            default_subcategory: Default arXiv subcategory (e.g., 'cs.AI' for Artificial Intelligence)
+            default_categories: Default arXiv categories (e.g., ['cs.AI', 'cs.LG'])
             default_max_results: Default maximum number of results to return
             default_sort_by: Default field to sort by ('submittedDate', 'relevance', etc.)
             default_sort_order: Default order of sorting ('ascending' or 'descending')
         """
         self.default_search_term = default_search_term
-        self.default_category = default_category
-        self.default_subcategory = default_subcategory
+        self.default_categories = default_categories or ["cs.AI", "cs.LG"]
         self.default_max_results = default_max_results
         self.default_sort_by = default_sort_by
         self.default_sort_order = default_sort_order
@@ -50,7 +47,7 @@ class ArxivFetcher:
     def fetch_papers(
         self,
         search_query: str = "",
-        category: str = None,
+        categories: List[str] = None,
         max_results: int = None,
         sort_by: str = None,
         sort_order: str = None,
@@ -60,7 +57,7 @@ class ArxivFetcher:
 
         Args:
             search_query: Search terms to filter papers
-            category: arXiv category (e.g., 'cs' for Computer Science)
+            categories: List of arXiv categories (e.g., ['cs.AI', 'cs.LG'])
             max_results: Maximum number of results to return
             sort_by: Field to sort by ('submittedDate', 'relevance', etc.)
             sort_order: Order of sorting ('ascending' or 'descending')
@@ -69,7 +66,7 @@ class ArxivFetcher:
             List of dictionaries containing paper information
         """
         # Use default values if parameters are not provided
-        category = category if category is not None else self.default_category
+        categories = categories if categories is not None else self.default_categories
         max_results = (
             max_results if max_results is not None else self.default_max_results
         )
@@ -83,9 +80,23 @@ class ArxivFetcher:
         if search_query:
             search_term = search_query
 
-        # Add category if provided and search_query doesn't already specify a category
-        if category and "cat:" not in search_term:
-            search_term = f"cat:{category} AND {search_term}"
+        # Add quotes around search terms if they don't already have quotes
+        if search_term and not (
+            search_term.startswith('"') and search_term.endswith('"')
+        ):
+            # Extract the part after "all:" if it exists
+            if "all:" in search_term:
+                prefix, term = search_term.split("all:", 1)
+                search_term = f'{prefix}all:"{term.strip()}"'
+            else:
+                search_term = f'"{search_term}"'
+
+        # Add categories if provided and search_query doesn't already specify a category
+        if categories and "cat:" not in search_term:
+            # ArXiv API works better with AND between categories
+            if categories:
+                category_query = " OR ".join([f"cat:{cat}" for cat in categories])
+                search_term = f"{search_term} AND {category_query}"
 
         params = {
             "search_query": search_term,
@@ -149,76 +160,53 @@ class ArxivFetcher:
         return papers
 
     def fetch_latest_papers(
-        self, category: str = None, max_results: int = None
+        self, categories: List[str] = None, max_results: int = None
     ) -> List[Dict[str, Any]]:
         """
-        Fetch the latest papers from arXiv in a specific category.
+        Fetch the latest papers from arXiv in specific categories.
 
         Args:
-            category: arXiv category (e.g., 'cs' for Computer Science)
+            categories: List of arXiv categories (e.g., ['cs.AI', 'cs.LG'])
             max_results: Maximum number of results to return
 
         Returns:
             List of dictionaries containing paper information
         """
         # Use default values if parameters are not provided
-        category = category if category is not None else self.default_category
+        categories = categories if categories is not None else self.default_categories
         max_results = (
             max_results if max_results is not None else self.default_max_results
         )
 
-        return self.fetch_papers(category=category, max_results=max_results)
-
-    def fetch_papers_by_subcategory(
-        self, category: str = None, subcategory: str = None, max_results: int = None
-    ) -> List[Dict[str, Any]]:
-        """
-        Fetch papers from arXiv in a specific subcategory.
-
-        Args:
-            category: Main arXiv category (e.g., 'cs' for Computer Science)
-            subcategory: arXiv subcategory (e.g., 'cs.AI' for Artificial Intelligence)
-            max_results: Maximum number of results to return
-
-        Returns:
-            List of dictionaries containing paper information
-        """
-        # Use default values if parameters are not provided
-        category = category if category is not None else self.default_category
-        subcategory = (
-            subcategory if subcategory is not None else self.default_subcategory
-        )
-        max_results = (
-            max_results if max_results is not None else self.default_max_results
-        )
-
-        search_query = f"cat:{subcategory}"
-        return self.fetch_papers(
-            search_query=search_query, category=category, max_results=max_results
-        )
+        return self.fetch_papers(categories=categories, max_results=max_results)
 
     def search_papers(
-        self, query: str, category: str = None, max_results: int = None
+        self,
+        query: str,
+        categories: List[str] = None,
+        max_results: int = None,
     ) -> List[Dict[str, Any]]:
         """
         Search for papers on arXiv based on a query.
 
         Args:
             query: Search query
-            category: arXiv category (e.g., 'cs' for Computer Science)
+            categories: List of arXiv categories (e.g., ['cs.AI', 'cs.LG'])
             max_results: Maximum number of results to return
 
         Returns:
             List of dictionaries containing paper information
         """
         # Use default values if parameters are not provided
-        category = category if category is not None else self.default_category
+        categories = categories if categories is not None else self.default_categories
         max_results = (
             max_results if max_results is not None else self.default_max_results
         )
 
         return self.fetch_papers(
-            search_query=query, category=category, max_results=max_results
+            search_query=query,
+            categories=categories,
+            max_results=max_results,
         )
 
 

@@ -38,9 +38,51 @@
             border-radius: 9999px;
             transition: background-color 0.2s;
         }
-        .icon-btn.collect-btn.collected {
-            color: #f59e0b; /* amber-500 */
+        .action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem; /* 8px */
+            padding: 0.5rem 1rem; /* 8px 16px */
+            border-radius: 0.5rem; /* 8px */
+            border-width: 1px;
+            font-size: 0.875rem; /* 14px */
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        .action-btn.collect-btn {
+            color: #d97706; /* amber-600 */
+            border-color: #fbbf24; /* amber-400 */
+            background-color: #fff;
+        }
+        .action-btn.collect-btn.collected {
+            color: #92400e; /* amber-800 */
+            border-color: #f59e0b; /* amber-500 */
+            background-color: #fef3c7; /* amber-200 */
+        }
+        .action-btn.read-btn {
+            color: #15803d; /* green-700 */
+            border-color: #86efac; /* green-300 */
+            background-color: #fff;
+        }
+        .action-btn.not-interested-btn {
+            color: #475569; /* slate-600 */
+            border-color: #cbd5e1; /* slate-300 */
+            background-color: #fff;
+        }
+
+        .date-preset-btn {
+             width: 100%;
+             padding: 8px;
+             border: 1px solid #cbd5e1; /* slate-300 */
+             border-radius: 6px;
+             font-size: 14px;
+             font-weight: 500;
+             transition: all 0.2s;
+        }
+        .date-preset-btn.active {
             background-color: #fffbeb; /* amber-100 */
+            border-color: #f59e0b; /* amber-500 */
+            color: #b45309; /* amber-700 */
         }
     </style>
 </head>
@@ -57,6 +99,7 @@
                 <nav class="-mb-px flex space-x-6" aria-label="Tabs">
                     <button id="tab-discover" class="whitespace-nowrap py-3 px-1 border-b-2 text-sm tab-active">Discover</button>
                     <button id="tab-collection" class="whitespace-nowrap py-3 px-1 border-b-2 text-sm tab-inactive">Collection</button>
+                    <button id="tab-config" class="whitespace-nowrap py-3 px-1 border-b-2 text-sm tab-inactive">Config</button>
                 </nav>
             </div>
         </header>
@@ -75,10 +118,16 @@
                     <h2 class="text-xl font-bold mb-2 text-slate-900">Relevance Prompt</h2>
                     <p class="text-slate-600 mb-4 text-sm">Define your interests to get tailored paper recommendations.</p>
                     <textarea id="relevance-prompt" class="w-full h-48 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition" placeholder="I'm a PM for recommendation systems. I'm interested in new embedding techniques, multi-modal recommendations, and papers on fairness in ranking from Google, Meta, and Netflix."></textarea>
-                    <button id="save-prompt-btn" class="mt-4 w-full bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors shadow-sm">Save Prompt</button>
+                    <button id="save-prompt-btn" class="mt-4 w-full bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors shadow-sm">Search Papers</button>
                 </div>
             </aside>
             <section class="lg:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <p class="text-sm text-slate-600">Showing papers from <strong id="timeframe-display" class="text-slate-700">the last 30 days</strong>.</p>
+                    <button id="edit-timeframe-btn" class="text-sm font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-2">
+                        <i class="fa-solid fa-calendar-days"></i>Change
+                    </button>
+                </div>
                 <div id="paper-feed" class="space-y-5">
                     <!-- Paper cards will be injected here -->
                 </div>
@@ -97,60 +146,124 @@
         </div>
     </template>
 
+    <!-- Config Page Template -->
+    <template id="config-page-template">
+        <div class="max-w-2xl mx-auto">
+             <h2 class="text-2xl font-bold mb-1 text-slate-900">Configuration</h2>
+             <p class="text-slate-600 mb-6 text-sm">Manage your settings for API access and content sources.</p>
+             <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 space-y-6">
+                <div>
+                    <label for="api-token" class="block text-sm font-medium text-slate-700">LLM API Token</label>
+                    <input type="password" id="api-token" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    <p class="mt-2 text-xs text-slate-500">Your token is stored locally and never shared.</p>
+                </div>
+                 <div>
+                    <label for="arxiv-categories" class="block text-sm font-medium text-slate-700">arXiv Categories</label>
+                    <input type="text" id="arxiv-categories" value="cs.AI, cs.LG" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm placeholder-slate-400 focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    <p class="mt-2 text-xs text-slate-500">Comma-separated list of categories to fetch from arXiv (e.g., cs.AI, cs.CV).</p>
+                </div>
+                <div class="pt-4">
+                     <button id="save-config-btn" class="w-full bg-amber-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-amber-600 transition-colors shadow-sm">Save Configuration</button>
+                </div>
+             </div>
+        </div>
+    </template>
+
+    <!-- Date Selector Modal -->
+    <div id="date-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50 p-4">
+        <div class="bg-white p-6 rounded-xl shadow-xl w-full max-w-md">
+            <h3 class="text-lg font-bold mb-4 text-slate-900">Select Timeframe</h3>
+            <div class="space-y-4">
+                <div id="date-presets" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button data-preset="7d" class="date-preset-btn">Last 7 Days</button>
+                    <button data-preset="30d" class="date-preset-btn active">Last 30 Days</button>
+                    <button data-preset="mtd" class="date-preset-btn">Month to Date</button>
+                    <button data-preset="ytd" class="date-preset-btn">Year to Date</button>
+                </div>
+                <div class="relative flex items-center">
+                    <div class="flex-grow border-t border-slate-200"></div>
+                    <span class="flex-shrink mx-4 text-slate-400 text-sm">Or custom range</span>
+                    <div class="flex-grow border-t border-slate-200"></div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="date-from" class="block text-sm font-medium text-slate-700">From</label>
+                        <input type="date" id="date-from" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    </div>
+                    <div>
+                        <label for="date-to" class="block text-sm font-medium text-slate-700">To</label>
+                        <input type="date" id="date-to" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md text-sm shadow-sm focus:outline-none focus:ring-amber-500 focus:border-amber-500">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="cancel-date-btn" class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Cancel</button>
+                <button id="apply-date-btn" class="px-4 py-2 text-sm font-medium text-white bg-amber-500 border border-transparent rounded-lg hover:bg-amber-600">Apply</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const mainContent = document.getElementById('main-content');
-            const discoverTab = document.getElementById('tab-discover');
-            const collectionTab = document.getElementById('tab-collection');
-            const discoverPageTemplate = document.getElementById('discover-page-template');
-            const collectionPageTemplate = document.getElementById('collection-page-template');
+            const dateModal = document.getElementById('date-modal');
+            const tabs = {
+                discover: document.getElementById('tab-discover'),
+                collection: document.getElementById('tab-collection'),
+                config: document.getElementById('tab-config')
+            };
+            const templates = {
+                discover: document.getElementById('discover-page-template'),
+                collection: document.getElementById('collection-page-template'),
+                config: document.getElementById('config-page-template')
+            };
 
+            // Sample papers for initial display and collection
             let papers = [
-                { id: 1, title: "Scaling DeepMind's Gato: A Generalist Agent", authors: "Scott Reed et al.", org: "DeepMind", date: "2024-07-15", summary: "This paper introduces Gato, a single generalist agent capable of a wide range of tasks. It's relevant for its novel approach to multi-task learning, suggesting a path toward more versatile and efficient recommendation models.", link: "#", status: "new", collected: false, notes: null },
-                { id: 2, title: "Self-Rewarding Language Models", authors: "Yuan-Sen Ting et al.", org: "Google", date: "2024-07-22", summary: "Explores a new paradigm where LLMs can self-improve by generating their own rewards. This is highly relevant for building adaptive recommendation systems that can refine their own logic without constant human supervision.", link: "#", status: "new", collected: false, notes: null },
-                { id: 3, title: "Fairness in Two-Sided Marketplaces: A Case Study", authors: "Sarah Dean et al.", org: "Netflix", date: "2024-07-18", summary: "A critical analysis of fairness constraints in recommendation systems for marketplaces. It provides a framework for balancing user satisfaction with provider fairness, a key challenge for PMs in this space.", link: "#", status: "new", collected: true, notes: "This is a key paper for our Q4 planning. The framework on page 5 is particularly relevant to the new supplier fairness initiative." },
-                { id: 4, title: "Multi-Modal Embeddings for Fashion Recommendation", authors: "Li Jing et al.", org: "Meta AI", date: "2024-07-25", summary: "Details a system that combines image and text data to create richer user profiles and item embeddings. The techniques for fusing modalities are directly applicable to improving catalog-based recommendations.", link: "#", status: "new", collected: false, notes: null },
+                { id: 1, title: "Scaling DeepMind's Gato: A Generalist Agent", authors: "Scott Reed et al.", org: "DeepMind", date: "2025-08-03", summary: "This paper introduces Gato, a single generalist agent capable of a wide range of tasks. It's relevant for its novel approach to multi-task learning, suggesting a path toward more versatile and efficient recommendation models.", link: "#", status: "new", collected: false, notes: null },
+                { id: 2, title: "Self-Rewarding Language Models", authors: "Yuan-Sen Ting et al.", org: "Google", date: "2025-07-22", summary: "Explores a new paradigm where LLMs can self-improve by generating their own rewards. This is highly relevant for building adaptive recommendation systems that can refine their own logic without constant human supervision.", link: "#", status: "new", collected: false, notes: null },
+                { id: 3, title: "Fairness in Two-Sided Marketplaces: A Case Study", authors: "Sarah Dean et al.", org: "Netflix", date: "2025-07-18", summary: "A critical analysis of fairness constraints in recommendation systems for marketplaces. It provides a framework for balancing user satisfaction with provider fairness, a key challenge for PMs in this space.", link: "#", status: "new", collected: true, notes: "This is a key paper for our Q4 planning. The framework on page 5 is particularly relevant to the new supplier fairness initiative." },
+                { id: 4, title: "Multi-Modal Embeddings for Fashion Recommendation", authors: "Li Jing et al.", org: "Meta AI", date: "2025-06-25", summary: "Details a system that combines image and text data to create richer user profiles and item embeddings. The techniques for fusing modalities are directly applicable to improving catalog-based recommendations.", link: "#", status: "new", collected: false, notes: null },
+                { id: 5, title: "A New Era for Computer Vision", authors: "Alex K. et al", org: "OpenAI", date: "2025-01-10", summary: "This paper from the beginning of the year discusses foundational models for computer vision.", link: "#", status: "new", collected: false, notes: null },
             ];
+
+            let dateFilter = { type: 'preset', value: '30d' };
+            let isSearching = false;
 
             function createPaperCard(paper, pageType) {
                 const card = document.createElement('div');
                 card.className = `bg-white p-5 rounded-xl shadow-sm border border-slate-200 transition-all duration-300 paper-card`;
                 card.dataset.id = paper.id;
 
-                if (paper.status === 'read') {
-                    card.classList.add('card-read');
-                }
+                if (paper.status === 'read') card.classList.add('card-read');
 
-                let contentHtml;
+                let contentHtml, actionsHtml = '';
+
                 if (pageType === 'collection') {
                     const currentNote = paper.notes || paper.summary;
-                    contentHtml = `
-                        <div class="mt-4" data-note-container>
-                            <div class="flex justify-between items-center mb-2">
-                                <h5 class="font-semibold text-sm text-slate-700">Summary & Notes</h5>
-                                <button data-action="edit-note" class="icon-btn hover:bg-slate-200" title="Edit Notes">
-                                    <i class="fa-solid fa-pencil"></i>
-                                </button>
-                            </div>
-                            <p class="text-slate-700">${currentNote}</p>
-                        </div>
-                    `;
+                    contentHtml = `<div class="mt-4" data-note-container><div class="flex justify-between items-center mb-2"><h5 class="font-semibold text-sm text-slate-700">Summary & Notes</h5><button data-action="edit-note" class="icon-btn hover:bg-slate-200" title="Edit Notes"><i class="fa-solid fa-pencil"></i></button></div><p class="text-slate-700">${currentNote}</p></div>`;
                 } else {
                     contentHtml = `<p class="text-slate-700 my-4">${paper.summary}</p>`;
+                    const collectBtnClass = paper.collected ? 'collected' : '';
+                    const collectBtnText = paper.collected ? 'Collected' : 'Collect';
+                    actionsHtml = `
+                        <div class="mt-4 pt-4 border-t border-slate-200 flex items-center gap-3">
+                            <button data-action="collect" class="action-btn collect-btn ${collectBtnClass}">
+                                <i class="fa-solid fa-star"></i>
+                                <span>${collectBtnText}</span>
+                            </button>
+                            <button data-action="read" class="action-btn read-btn">
+                                <i class="fa-solid fa-check"></i>
+                                <span>Read</span>
+                            </button>
+                            <button data-action="not_interested" class="action-btn not-interested-btn">
+                                <i class="fa-solid fa-circle-xmark"></i>
+                                <span>Not Interested</span>
+                            </button>
+                        </div>
+                    `;
                 }
-
-                const discoverButtons = `
-                    <button data-action="collect" class="icon-btn collect-btn ${paper.collected ? 'collected' : ''}" title="Collect">
-                        <i class="fa-solid fa-star"></i>
-                    </button>
-                    <button data-action="read" class="icon-btn hover:bg-slate-200" title="Mark as Read">
-                        <i class="fa-solid fa-check"></i>
-                    </button>
-                    <button data-action="not_interested" class="icon-btn hover:bg-slate-200" title="Not Interested">
-                        <i class="fa-solid fa-circle-xmark"></i>
-                    </button>
-                `;
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start">
@@ -159,119 +272,282 @@
                             <h3 class="font-bold text-lg text-slate-800">${paper.title}</h3>
                             <p class="text-sm text-slate-600 font-medium">${paper.authors}</p>
                         </div>
-                        ${pageType === 'discover' ? `<div class="flex items-center space-x-1 flex-shrink-0 ml-4">${discoverButtons}</div>` : ''}
                     </div>
                     ${contentHtml}
-                    <a href="${paper.link}" target="_blank" class="inline-block mt-4 text-amber-600 hover:text-amber-700 font-semibold text-sm">
-                        Read on arXiv <i class="fa-solid fa-arrow-right text-xs"></i>
-                    </a>
+                    ${actionsHtml}
+                    <a href="${paper.link}" target="_blank" class="inline-block mt-4 text-amber-600 hover:text-amber-700 font-semibold text-sm">Read on arXiv <i class="fa-solid fa-arrow-right text-xs"></i></a>
                 `;
                 return card;
             }
 
-            function renderDiscoverPage() {
-                const pageNode = discoverPageTemplate.content.cloneNode(true);
-                const feed = pageNode.getElementById('paper-feed');
-                feed.innerHTML = '';
-                papers.forEach(paper => {
-                    if (paper.status !== 'not_interested') {
-                        const card = createPaperCard(paper, 'discover');
-                        feed.appendChild(card);
+            function filterPapersByDate(papersToFilter) {
+                const now = new Date('2025-08-04T17:16:00'); // Pinned to a specific time for consistent demo
+                now.setHours(0, 0, 0, 0);
+
+                let startDate, endDate = new Date(now);
+
+                if (dateFilter.type === 'preset') {
+                    startDate = new Date(now);
+                    switch(dateFilter.value) {
+                        case '7d': startDate.setDate(now.getDate() - 7); break;
+                        case '30d': startDate.setDate(now.getDate() - 30); break;
+                        case 'mtd': startDate.setDate(1); break;
+                        case 'ytd': startDate.setMonth(0, 1); break;
                     }
+                } else {
+                    startDate = new Date(dateFilter.value.start);
+                    endDate = new Date(dateFilter.value.end);
+                }
+
+                return papersToFilter.filter(p => {
+                    const paperDate = new Date(p.date);
+                    return paperDate >= startDate && paperDate <= endDate;
                 });
+            }
+
+            function updateTimeframeDisplay() {
+                const displayEl = document.getElementById('timeframe-display');
+                if (!displayEl) return;
+
+                if (dateFilter.type === 'preset') {
+                    switch(dateFilter.value) {
+                        case '7d': displayEl.textContent = 'the last 7 days'; break;
+                        case '30d': displayEl.textContent = 'the last 30 days'; break;
+                        case 'mtd': displayEl.textContent = 'this month'; break;
+                        case 'ytd': displayEl.textContent = 'this year'; break;
+                    }
+                } else {
+                    displayEl.textContent = `from ${dateFilter.value.start} to ${dateFilter.value.end}`;
+                }
+            }
+
+            function renderPage(template) {
                 mainContent.innerHTML = '';
-                mainContent.appendChild(pageNode);
+                mainContent.appendChild(template.content.cloneNode(true));
+            }
+
+            // Function to search papers using the API
+            async function searchPapers() {
+                if (isSearching) return;
+
+                const prompt = document.getElementById('relevance-prompt').value.trim();
+                if (!prompt) {
+                    alert('Please enter a relevance prompt to search for papers.');
+                    return;
+                }
+
+                isSearching = true;
+                const searchBtn = document.getElementById('save-prompt-btn');
+                const originalBtnText = searchBtn.textContent;
+                searchBtn.textContent = 'Searching...';
+                searchBtn.disabled = true;
+
+                const feed = mainContent.querySelector('#paper-feed');
+                feed.innerHTML = '<p class="text-center text-slate-500 py-8">Searching for relevant papers...</p>';
+
+                try {
+                    // Determine timeframe value based on current filter
+                    let timeframeValue = '30d'; // Default
+                    let startDate = null;
+                    let endDate = null;
+
+                    if (dateFilter.type === 'preset') {
+                        timeframeValue = dateFilter.value;
+                    } else {
+                        timeframeValue = 'custom';
+                        startDate = dateFilter.value.start;
+                        endDate = dateFilter.value.end;
+                    }
+
+                    // Get categories from config if available
+                    const categoriesInput = document.getElementById('arxiv-categories');
+                    let categories = ['cs.AI', 'cs.LG']; // Default
+                    if (categoriesInput) {
+                        const categoriesText = categoriesInput.value.trim();
+                        if (categoriesText) {
+                            categories = categoriesText.split(',').map(cat => cat.trim());
+                        }
+                    }
+
+                    const response = await fetch('/api/search-papers', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            timeframe: timeframeValue,
+                            start_date: startDate,
+                            end_date: endDate,
+                            categories: categories
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`API error: ${response.status}`);
+                    }
+
+                    const newPapers = await response.json();
+
+                    // Update our papers array with the new papers
+                    if (newPapers && newPapers.length > 0) {
+                        // Convert API response to our paper format
+                        const formattedPapers = newPapers.map(paper => ({
+                            id: paper.id,
+                            title: paper.title,
+                            authors: Array.isArray(paper.authors) ? paper.authors.join(', ') : paper.authors,
+                            org: paper.org || 'Unknown',
+                            date: paper.date,
+                            summary: paper.summary,
+                            link: paper.link,
+                            status: paper.status || 'new',
+                            collected: paper.collected || false,
+                            notes: paper.notes
+                        }));
+
+                        // Replace sample papers with real ones
+                        papers = formattedPapers;
+                        renderDiscoverPage();
+                    } else {
+                        feed.innerHTML = '<p class="text-center text-slate-500 py-8">No relevant papers found. Try adjusting your prompt or timeframe.</p>';
+                    }
+                } catch (error) {
+                    console.error('Error searching papers:', error);
+                    feed.innerHTML = `<p class="text-center text-red-500 py-8">Error searching papers: ${error.message}</p>`;
+                } finally {
+                    isSearching = false;
+                    searchBtn.textContent = originalBtnText;
+                    searchBtn.disabled = false;
+                }
+            }
+
+            function renderDiscoverPage() {
+                renderPage(templates.discover);
+                const feed = mainContent.querySelector('#paper-feed');
+                feed.innerHTML = '';
+                const filteredPapers = filterPapersByDate(papers);
+
+                if (filteredPapers.length > 0) {
+                     filteredPapers.forEach(paper => {
+                        if (paper.status !== 'not_interested') {
+                            feed.appendChild(createPaperCard(paper, 'discover'));
+                        }
+                    });
+                } else {
+                    feed.innerHTML = `<p class="text-center text-slate-500 py-8">No papers found for the selected timeframe.</p>`;
+                }
+                updateTimeframeDisplay();
+
+                // Add event listener to the search button
+                const searchBtn = document.getElementById('save-prompt-btn');
+                if (searchBtn) {
+                    searchBtn.addEventListener('click', searchPapers);
+                }
             }
 
             function renderCollectionPage() {
-                const pageNode = collectionPageTemplate.content.cloneNode(true);
-                const feed = pageNode.getElementById('collection-feed');
+                renderPage(templates.collection);
+                const feed = mainContent.querySelector('#collection-feed');
                 feed.innerHTML = '';
                 const collectedPapers = papers.filter(p => p.collected);
                 if (collectedPapers.length > 0) {
-                    collectedPapers.forEach(paper => {
-                        const card = createPaperCard(paper, 'collection');
-                        feed.appendChild(card);
-                    });
+                    collectedPapers.forEach(paper => feed.appendChild(createPaperCard(paper, 'collection')));
                 } else {
-                    feed.innerHTML = `<p class="text-center text-slate-500 py-8">You haven't collected any papers yet. Click the star icon on the Discover page to save papers here.</p>`;
+                    feed.innerHTML = `<p class="text-center text-slate-500 py-8">You haven't collected any papers yet.</p>`;
                 }
-                mainContent.innerHTML = '';
-                mainContent.appendChild(pageNode);
             }
 
-            function handleTabClick(activeTab, inactiveTab, renderFunction) {
-                activeTab.classList.add('tab-active');
-                activeTab.classList.remove('tab-inactive');
-                inactiveTab.classList.add('tab-inactive');
-                inactiveTab.classList.remove('tab-active');
-                renderFunction();
+            function renderConfigPage() {
+                renderPage(templates.config);
             }
 
-            discoverTab.addEventListener('click', () => handleTabClick(discoverTab, collectionTab, renderDiscoverPage));
-            collectionTab.addEventListener('click', () => handleTabClick(collectionTab, discoverTab, renderCollectionPage));
+            function handleTabClick(activeTabKey) {
+                Object.keys(tabs).forEach(key => {
+                    tabs[key].classList.toggle('tab-active', key === activeTabKey);
+                    tabs[key].classList.toggle('tab-inactive', key !== activeTabKey);
+                });
+
+                if (activeTabKey === 'discover') renderDiscoverPage();
+                else if (activeTabKey === 'collection') renderCollectionPage();
+                else if (activeTabKey === 'config') renderConfigPage();
+            }
+
+            Object.keys(tabs).forEach(key => {
+                tabs[key].addEventListener('click', () => handleTabClick(key));
+            });
 
             mainContent.addEventListener('click', (e) => {
-                const button = e.target.closest('button[data-action]');
+                const button = e.target.closest('button');
                 if (!button) return;
+
+                if (button.id === 'edit-timeframe-btn') {
+                    dateModal.classList.remove('hidden');
+                    return;
+                }
 
                 const action = button.dataset.action;
                 const card = button.closest('.paper-card');
-                const paperId = parseInt(card.dataset.id);
-                const paper = papers.find(p => p.id === paperId);
 
-                if (paper) {
+                if (card) {
+                    const paperId = parseInt(card.dataset.id);
+                    const paper = papers.find(p => p.id === paperId);
+                    if (!paper) return;
+
                     switch(action) {
                         case 'collect':
                             paper.collected = !paper.collected;
                             button.classList.toggle('collected');
+                            button.querySelector('span').textContent = paper.collected ? 'Collected' : 'Collect';
                             break;
-                        case 'read':
-                            paper.status = 'read';
-                            card.classList.add('card-read');
-                            break;
-                        case 'not_interested':
-                            paper.status = 'not_interested';
-                            card.classList.add('card-not-interested');
-                            break;
+                        case 'read': paper.status = 'read'; card.classList.add('card-read'); break;
+                        case 'not_interested': paper.status = 'not_interested'; card.classList.add('card-not-interested'); break;
                         case 'edit-note': {
                             const noteContainer = card.querySelector('[data-note-container]');
                             const p = noteContainer.querySelector('p');
-                            const currentText = p.textContent;
-                            noteContainer.innerHTML = `
-                                <div class="flex justify-between items-center mb-2">
-                                    <h5 class="font-semibold text-sm text-slate-700">Summary & Notes</h5>
-                                    <button data-action="save-note" class="icon-btn hover:bg-green-100 text-green-600" title="Save Notes">
-                                        <i class="fa-solid fa-check"></i>
-                                    </button>
-                                </div>
-                                <textarea class="w-full h-32 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500">${currentText}</textarea>
-                            `;
+                            noteContainer.innerHTML = `<div class="flex justify-between items-center mb-2"><h5 class="font-semibold text-sm text-slate-700">Summary & Notes</h5><button data-action="save-note" class="icon-btn hover:bg-green-100 text-green-600" title="Save Notes"><i class="fa-solid fa-check"></i></button></div><textarea class="w-full h-32 p-2 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-amber-500 focus:border-amber-500">${p.textContent}</textarea>`;
                             noteContainer.querySelector('textarea').focus();
                             break;
                         }
                         case 'save-note': {
                             const noteContainer = card.querySelector('[data-note-container]');
                             const textarea = noteContainer.querySelector('textarea');
-                            const newText = textarea.value;
-                            paper.notes = newText;
-                            noteContainer.innerHTML = `
-                                <div class="flex justify-between items-center mb-2">
-                                    <h5 class="font-semibold text-sm text-slate-700">Summary & Notes</h5>
-                                    <button data-action="edit-note" class="icon-btn hover:bg-slate-200" title="Edit Notes">
-                                        <i class="fa-solid fa-pencil"></i>
-                                    </button>
-                                </div>
-                                <p class="text-slate-700">${newText}</p>
-                            `;
+                            paper.notes = textarea.value;
+                            noteContainer.innerHTML = `<div class="flex justify-between items-center mb-2"><h5 class="font-semibold text-sm text-slate-700">Summary & Notes</h5><button data-action="edit-note" class="icon-btn hover:bg-slate-200" title="Edit Notes"><i class="fa-solid fa-pencil"></i></button></div><p class="text-slate-700">${textarea.value}</p>`;
                             break;
                         }
                     }
                 }
             });
 
+            // Modal listeners
+            dateModal.querySelector('#cancel-date-btn').addEventListener('click', () => dateModal.classList.add('hidden'));
+            dateModal.querySelector('#apply-date-btn').addEventListener('click', () => {
+                const fromDate = dateModal.querySelector('#date-from').value;
+                const toDate = dateModal.querySelector('#date-to').value;
+
+                if (fromDate && toDate) {
+                    dateFilter = { type: 'custom', value: { start: fromDate, end: toDate } };
+                }
+
+                dateModal.classList.add('hidden');
+                renderDiscoverPage();
+            });
+
+            dateModal.querySelector('#date-presets').addEventListener('click', (e) => {
+                const button = e.target.closest('button[data-preset]');
+                if (!button) return;
+
+                dateFilter = { type: 'preset', value: button.dataset.preset };
+
+                dateModal.querySelectorAll('#date-presets button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                dateModal.querySelector('#date-from').value = '';
+                dateModal.querySelector('#date-to').value = '';
+            });
+
             // Initial load
-            renderDiscoverPage();
+            handleTabClick('discover');
         });
     </script>
 </body>
